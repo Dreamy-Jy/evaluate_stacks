@@ -1,0 +1,262 @@
+syntax = "proto3";
+
+package todoapi;
+
+import "google/protobuf/timestamp.proto";
+
+// ============================================================================
+// Base ID Types
+// ============================================================================
+
+message ListId {
+  string id = 1;
+}
+
+message SetId {
+  string id = 1;
+}
+
+message ToDoId {
+  string id = 1;
+}
+
+// ============================================================================
+// Entity Address Types
+// ============================================================================
+
+message SetAddress {
+  oneof address {
+    WholeList whole_list = 1;
+    SingularSet singular = 2;
+  }
+
+  message WholeList {
+    string lid = 1;
+  }
+
+  message SingularSet {
+    string lid = 1;
+    string sid = 2;
+  }
+}
+
+message ToDoAddress {
+  oneof address {
+    WholeList whole_list = 1;
+    WholeSet whole_set = 2;
+    SingularToDo singular = 3;
+  }
+
+  message WholeList {
+    string lid = 1;
+  }
+
+  message WholeSet {
+    string lid = 1;
+    string sid = 2;
+  }
+
+  message SingularToDo {
+    string lid = 1;
+    optional string sid = 2;
+    string tdid = 3;
+  }
+}
+
+// ============================================================================
+// Entity Types
+// ============================================================================
+
+message List {
+  string lid = 1;
+  string title = 2;
+  repeated Set sets = 3;
+  repeated ToDo todos = 4;
+}
+
+message Set {
+  string lid = 1;
+  string sid = 2;
+  string title = 3;
+  repeated ToDo todos = 4;
+}
+
+message ToDo {
+  string lid = 1;
+  optional string sid = 2;
+  string tdid = 3;
+  string title = 4;
+  bool complete = 5;
+  google.protobuf.Timestamp due_date = 6;
+}
+
+// ============================================================================
+// Create Data Types
+// ============================================================================
+
+message ListCreateData {
+  string title = 1;
+}
+
+message SetCreateData {
+  string title = 1;
+}
+
+message ToDoCreateData {
+  string title = 1;
+  google.protobuf.Timestamp due_date = 2;
+}
+
+// ============================================================================
+// Change Data Types
+// ============================================================================
+
+message ListChangeData {
+  string lid = 1;
+  string title = 2;
+}
+
+message SetChangeData {
+  string lid = 1;
+  string sid = 2;
+  string title = 3;
+}
+
+message ToDoChangeData {
+  string lid = 1;
+  optional string sid = 2;
+  string tdid = 3;
+  string title = 4;
+  google.protobuf.Timestamp due_date = 5;
+  bool complete = 6;
+}
+
+// ============================================================================
+// Request/Response Messages
+// ============================================================================
+
+// CREATE
+message CreateListsRequest {
+  repeated ListCreateData lists = 1;
+}
+
+message CreateListsResponse {
+  bool success = 1;
+}
+
+message CreateSetsRequest {
+  repeated SetCreateData sets = 1;
+}
+
+message CreateSetsResponse {
+  bool success = 1;
+}
+
+message CreateToDosRequest {
+  repeated ToDoCreateData todos = 1;
+}
+
+message CreateToDosResponse {
+  bool success = 1;
+}
+
+// READ
+message ReadListsRequest {
+  repeated string lids = 1; // empty array means read all
+}
+
+message ReadListsResponse {
+  repeated List lists = 1;
+}
+
+message ReadSetsRequest {
+  repeated SetAddress addresses = 1; // empty array means read all
+}
+
+message ReadSetsResponse {
+  repeated Set sets = 1;
+}
+
+message ReadToDosRequest {
+  repeated ToDoAddress addresses = 1; // empty array means read all
+}
+
+message ReadToDosResponse {
+  repeated ToDo todos = 1;
+}
+
+// UPDATE
+message UpdateListsRequest {
+  repeated ListChangeData lists = 1;
+}
+
+message UpdateListsResponse {
+  bool success = 1;
+}
+
+message UpdateSetsRequest {
+  repeated SetChangeData sets = 1;
+}
+
+message UpdateSetsResponse {
+  bool success = 1;
+}
+
+message UpdateToDosRequest {
+  repeated ToDoChangeData todos = 1;
+}
+
+message UpdateToDosResponse {
+  bool success = 1;
+}
+
+// DELETE
+message DeleteListsRequest {
+  repeated string lids = 1;
+}
+
+message DeleteListsResponse {
+  bool success = 1;
+}
+
+message DeleteSetsRequest {
+  repeated SetAddress addresses = 1;
+}
+
+message DeleteSetsResponse {
+  bool success = 1;
+}
+
+message DeleteToDosRequest {
+  repeated ToDoAddress addresses = 1;
+}
+
+message DeleteToDosResponse {
+  bool success = 1;
+}
+
+// ============================================================================
+// Service Definition
+// ============================================================================
+
+service ToDoService {
+  // CREATE
+  rpc CreateLists(CreateListsRequest) returns (CreateListsResponse);
+  rpc CreateSets(CreateSetsRequest) returns (CreateSetsResponse);
+  rpc CreateToDos(CreateToDosRequest) returns (CreateToDosResponse);
+
+  // READ
+  rpc ReadLists(ReadListsRequest) returns (ReadListsResponse);
+  rpc ReadSets(ReadSetsRequest) returns (ReadSetsResponse);
+  rpc ReadToDos(ReadToDosRequest) returns (ReadToDosResponse);
+
+  // UPDATE
+  rpc UpdateLists(UpdateListsRequest) returns (UpdateListsResponse);
+  rpc UpdateSets(UpdateSetsRequest) returns (UpdateSetsResponse);
+  rpc UpdateToDos(UpdateToDosRequest) returns (UpdateToDosResponse);
+
+  // DELETE
+  rpc DeleteLists(DeleteListsRequest) returns (DeleteListsResponse);
+  rpc DeleteSets(DeleteSetsRequest) returns (DeleteSetsResponse);
+  rpc DeleteToDos(DeleteToDosRequest) returns (DeleteToDosResponse);
+}

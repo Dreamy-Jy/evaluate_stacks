@@ -29,6 +29,8 @@ Generally Speaking this what the endpoints will look like
 
 ### API Schema
 
+[AI generated protobuf of the schema.](schema.proto)
+
 #### Base Types
 
 Entity IDs
