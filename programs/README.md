@@ -102,11 +102,15 @@ All methods are assumed to be atomic
 
 ##### CREATE
 
-- createLists : `(ListCreateData[]) -> bool`
-- createSets : `(SetCreateData[]) -> bool`
-- createToDos : `(ToDoCreateData[]) -> bool`
+Return the created resource
+
+- createLists : `(ListCreateData[]) -> List[]`
+- createSets : `(SetCreateData[]) -> Set[]`
+- createToDos : `(ToDoCreateData[]) -> ToDo[]`
 
 ##### READ
+
+Return read resource
 
 - readLists : `(lid[]?) -> List[]`
 - readSets : `(SetAddress[]?) -> Set[]`
@@ -114,11 +118,15 @@ All methods are assumed to be atomic
 
 ##### UPDATE
 
-- updateLists : `(ListChangeData[]) -> bool`
-- updateSets : `(SetChangeData[]) -> bool`
-- updateToDos : `(ToDoChangeData[]) -> bool`
+Return the updated resource
+
+- updateLists : `(ListChangeData[]) -> List[]`
+- updateSets : `(SetChangeData[]) -> Set[]`
+- updateToDos : `(ToDoChangeData[]) -> ToDo[]`
 
 ##### DELETE
+
+Return nothing
 
 - deleteLists : `(lid[]) -> bool`
 - deleteSets : `(SetAddress[]) -> bool`
