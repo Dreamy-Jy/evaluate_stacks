@@ -1,11 +1,22 @@
-use actix_web::{App, HttpServer};
+use actix_web::{App, HttpServer, web::Data};
+use sqlx::SqlitePool;
 
 mod api;
+mod db;
+mod types;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+    let pool = match SqlitePool::connect("../database/database.db").await {
+        Ok(p) => p,
+        Err(e) => {
+            panic!("Failed to connect to the database: {}", e);
+        }
+    };
+
+    HttpServer::new(move || {
         App::new()
+            .app_data(Data::new(pool.clone()))
             .service(api::create_lists)
             .service(api::create_sets)
             .service(api::create_to_dos)
