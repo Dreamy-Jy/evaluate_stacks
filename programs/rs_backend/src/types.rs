@@ -1,3 +1,4 @@
+use chrono::{Date, DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Debug)]
@@ -20,6 +21,7 @@ pub struct ToDo {
     pub list_id : i32,
     pub title : String,
     pub complete: bool,
+    pub due_date: Option<NaiveDate>,
 }
 
 pub type ListID = i32;

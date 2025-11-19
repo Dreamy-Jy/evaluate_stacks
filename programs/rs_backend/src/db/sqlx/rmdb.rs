@@ -54,6 +54,7 @@ pub async fn query_all_todos(mut db_conn: PoolConnection<Sqlite>) -> Result<Vec<
             set_id: row.get("sid"),
             title: row.get("title"),
             complete: row.get("complete"),
+            due_date: row.get("due_date"),
         };
         todos.push(todo);
     }
@@ -191,6 +192,7 @@ pub async fn query_todos(
             set_id: row.get("sid"),
             title: row.get("title"),
             complete: row.get("complete"),
+            due_date: row.get("due_date"),
         };
         todos.push(todo);
     }
