@@ -1,28 +1,28 @@
 use actix_web::{
     get,
-    web::{self, Json},
+    web::{Data, Json},
 };
 use sqlx::{Pool, Sqlite};
 
 use crate::{
-    db::sqlx::rmdb::{
+    db::sqlx::{
         query_all_lists, query_all_sets, query_all_todos, query_lists, query_sets, query_todos,
     },
     types::{List, ListID, Set, SetAddress, ToDo, ToDoAddress},
 };
 
-type ReadListsResponse = Vec<List>;
-type ReadSetsResponse = Vec<Set>;
-type ReadToDosResponse = Vec<ToDo>;
-
 type ReadListsRequest = Vec<ListID>;
 type ReadSetsRequest = Vec<SetAddress>;
 type ReadToDosRequest = Vec<ToDoAddress>;
 
+type ReadListsResponse = Vec<List>;
+type ReadSetsResponse = Vec<Set>;
+type ReadToDosResponse = Vec<ToDo>;
+
 #[get("/api/lists/read")]
 pub async fn read_lists(
     req: Option<Json<ReadListsRequest>>,
-    db_conn_pool: web::Data<Pool<Sqlite>>,
+    db_conn_pool: Data<Pool<Sqlite>>,
 ) -> Json<ReadListsResponse> {
     let conn = db_conn_pool.acquire().await.unwrap();
 
@@ -46,7 +46,7 @@ pub async fn read_lists(
 #[get("/api/sets/read")]
 pub async fn read_sets(
     req: Option<Json<ReadSetsRequest>>,
-    db_conn_pool: web::Data<Pool<Sqlite>>,
+    db_conn_pool: Data<Pool<Sqlite>>,
 ) -> Json<ReadSetsResponse> {
     let conn = db_conn_pool.acquire().await.unwrap();
 
@@ -70,7 +70,7 @@ pub async fn read_sets(
 #[get("/api/to_dos/read")]
 pub async fn read_to_dos(
     req: Option<Json<ReadToDosRequest>>,
-    db_conn_pool: web::Data<Pool<Sqlite>>,
+    db_conn_pool: Data<Pool<Sqlite>>,
 ) -> Json<ReadToDosResponse> {
     let conn = db_conn_pool.acquire().await.unwrap();
 

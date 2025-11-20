@@ -1,1 +1,3 @@
-pub mod rmdb;
+mod rmdb;
+
+pub use rmdb::*;
