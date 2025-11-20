@@ -1,25 +1,25 @@
-use chrono::{Date, DateTime, NaiveDate, Utc};
+use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Debug)]
 pub struct List {
-    pub id : i32,
-    pub title : String,
+    pub id: i32,
+    pub title: String,
 }
 
 #[derive(Serialize, Debug)]
 pub struct Set {
-    pub id : i32,
-    pub list_id : i32,
-    pub title : String,
+    pub id: i32,
+    pub list_id: i32,
+    pub title: String,
 }
 
 #[derive(Serialize, Debug)]
 pub struct ToDo {
-    pub id : i32,
-    pub set_id : Option<i32>,
-    pub list_id : i32,
-    pub title : String,
+    pub id: i32,
+    pub set_id: Option<i32>,
+    pub list_id: i32,
+    pub title: String,
     pub complete: bool,
     pub due_date: Option<NaiveDate>,
 }
@@ -32,7 +32,7 @@ type ToDoID = i32;
 #[serde(untagged)]
 pub enum SetAddress {
     WholeList(ListID),
-    Singular(ListID, SetID)
+    Singular(ListID, SetID),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
