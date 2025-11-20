@@ -1,20 +1,19 @@
 use actix_web::{post, web::Json};
 use serde::Serialize;
 
-
 #[derive(Serialize)]
 struct CreateListsResponse {
-    hello: String
+    hello: String,
 }
 
 #[derive(Serialize)]
 struct CreateSetsResponse {
-    hello: String
+    hello: String,
 }
 
 #[derive(Serialize)]
 struct CreateToDosResponse {
-    hello: String
+    hello: String,
 }
 
 #[post("/api/lists/create")]

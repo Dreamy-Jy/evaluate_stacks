@@ -3,17 +3,17 @@ use serde::Serialize;
 
 #[derive(Serialize)]
 struct UpdateListsResponse {
-    hello: String
+    hello: String,
 }
 
 #[derive(Serialize)]
 struct UpdateSetsResponse {
-    hello: String
+    hello: String,
 }
 
 #[derive(Serialize)]
 struct UpdateToDosResponse {
-    hello: String
+    hello: String,
 }
 
 #[patch("/api/lists/update")]

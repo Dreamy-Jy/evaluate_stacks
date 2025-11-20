@@ -1,7 +1,5 @@
 use actix_web::{HttpResponse, Responder, delete};
 
-
-
 #[delete("/api/lists/delete")]
 pub async fn delete_lists(_req_body: String) -> impl Responder {
     HttpResponse::Ok().body(_req_body)

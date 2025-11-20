@@ -1,9 +1,9 @@
 mod create;
+mod delete;
 mod read;
 mod update;
-mod delete;
 
 pub use create::*;
+pub use delete::*;
 pub use read::*;
 pub use update::*;
-pub use delete::*;
