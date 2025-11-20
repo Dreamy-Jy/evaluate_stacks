@@ -33,20 +33,20 @@ INSERT INTO sets (lid, sid, title) VALUES
 
 -- Chores > Clean Bath Room (Today = 2025-11-18)
 INSERT INTO todos (lid, sid, tdid, title, complete, due_date) VALUES
-  (1, 2, 1, 'Scrub Toilet Bowl', 0, '2025-11-18'),
-  (1, 2, 2, 'Disinfect Toilet', 0, '2025-11-18'),
-  (1, 2, 3, 'Clean glass surfaces', 0, '2025-11-18'),
-  (1, 2, 4, 'Sweep Floor', 0, '2025-11-18'),
-  (1, 2, 5, 'Mop Floor', 0, '2025-11-18');
+  (1, 2, 1, 'Scrub Toilet Bowl', 0, '2025-11-18T23:59:59Z'),
+  (1, 2, 2, 'Disinfect Toilet', 0, '2025-11-18T23:59:59Z'),
+  (1, 2, 3, 'Clean glass surfaces', 0, '2025-11-18T23:59:59Z'),
+  (1, 2, 4, 'Sweep Floor', 0, '2025-11-18T23:59:59Z'),
+  (1, 2, 5, 'Mop Floor', 0, '2025-11-18T23:59:59Z');
 
 -- Chores > Clean Room (Yesterday = 2025-11-17)
 INSERT INTO todos (lid, sid, tdid, title, complete, due_date) VALUES
-  (1, 3, 6, 'Sweep Floor', 0, '2025-11-17'),
-  (1, 3, 7, 'Mop Floor', 0, '2025-11-17'),
-  (1, 3, 8, 'Clean Glass Surfaces', 0, '2025-11-17'),
-  (1, 3, 9, 'Organize Room', 0, '2025-11-17'),
-  (1, 3, 10, 'Fold Clothing', 0, '2025-11-17'),
-  (1, 3, 11, 'Laundry', 0, '2025-11-17');
+  (1, 3, 6, 'Sweep Floor', 0, '2025-11-17T23:59:59Z'),
+  (1, 3, 7, 'Mop Floor', 0, '2025-11-17T23:59:59Z'),
+  (1, 3, 8, 'Clean Glass Surfaces', 0, '2025-11-17T23:59:59Z'),
+  (1, 3, 9, 'Organize Room', 0, '2025-11-17T23:59:59Z'),
+  (1, 3, 10, 'Fold Clothing', 0, '2025-11-17T23:59:59Z'),
+  (1, 3, 11, 'Laundry', 0, '2025-11-17T23:59:59Z');
 
 -- Chores (directly under list, no set)
 INSERT INTO todos (lid, sid, tdid, title, complete, due_date) VALUES
@@ -59,8 +59,8 @@ INSERT INTO todos (lid, sid, tdid, title, complete, due_date) VALUES
 
 -- Community (all directly under list, no set)
 INSERT INTO todos (lid, sid, tdid, title, complete, due_date) VALUES
-  (2, NULL, 1, 'Go to NYC Resistor Craft Night', 0, '2025-11-20'),
-  (2, NULL, 2, 'Go to Street Trash Cleanings', 0, '2025-11-25'),
-  (2, NULL, 3, 'Go to Church', 0, '2025-11-17');
+  (2, NULL, 1, 'Go to NYC Resistor Craft Night', 0, '2025-11-20T23:59:59Z'),
+  (2, NULL, 2, 'Go to Street Trash Cleanings', 0, '2025-11-25T23:59:59Z'),
+  (2, NULL, 3, 'Go to Church', 0, '2025-11-17T23:59:59Z');
 
 -- Projects list has no sets or todos

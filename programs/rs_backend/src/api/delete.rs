@@ -5,7 +5,10 @@ use actix_web::{
 use sqlx::{Pool, Sqlite};
 
 use crate::{
-    db::sqlx::{delete_lists as db_delete_lists, delete_sets as db_delete_sets, delete_todos as db_delete_todos},
+    db::sqlx::{
+        delete_lists as db_delete_lists, delete_sets as db_delete_sets,
+        delete_todos as db_delete_todos,
+    },
     types::{ListID, SetAddress, ToDoAddress},
 };
 
@@ -18,12 +21,9 @@ pub async fn delete_lists(
     req: Result<Json<DeleteListsRequest>, Error>,
     db_conn_pool: Data<Pool<Sqlite>>,
 ) -> impl Responder {
-
     match req {
         Err(e) => return HttpResponse::BadRequest().body(format!("Invalid request: {}", e)),
-        Ok(Json(_data)) => {
-            db_delete_lists(db_conn_pool, _data).await.unwrap()
-        },
+        Ok(Json(_data)) => db_delete_lists(db_conn_pool, _data).await.unwrap(),
     }
 
     HttpResponse::Ok().finish()
@@ -34,12 +34,9 @@ pub async fn delete_sets(
     req: Result<Json<DeleteSetsRequest>, Error>,
     db_conn_pool: Data<Pool<Sqlite>>,
 ) -> impl Responder {
-
     match req {
         Err(e) => return HttpResponse::BadRequest().body(format!("Invalid request: {}", e)),
-        Ok(Json(_data)) => {
-            db_delete_sets(db_conn_pool, _data).await.unwrap()
-        },
+        Ok(Json(_data)) => db_delete_sets(db_conn_pool, _data).await.unwrap(),
     }
 
     HttpResponse::Ok().finish()
@@ -50,12 +47,9 @@ pub async fn delete_to_dos(
     req: Result<Json<DeleteToDosRequest>, Error>,
     db_conn_pool: Data<Pool<Sqlite>>,
 ) -> impl Responder {
-
     match req {
         Err(e) => return HttpResponse::BadRequest().body(format!("Invalid request: {}", e)),
-        Ok(Json(_data)) => {
-            db_delete_todos(db_conn_pool, _data).await.unwrap()
-        },
+        Ok(Json(_data)) => db_delete_todos(db_conn_pool, _data).await.unwrap(),
     }
 
     HttpResponse::Ok().finish()

@@ -1,4 +1,4 @@
-use chrono::NaiveDate;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Debug)]
@@ -21,12 +21,12 @@ pub struct ToDo {
     pub list_id: i32,
     pub title: String,
     pub complete: bool,
-    pub due_date: Option<NaiveDate>,
+    pub due_date: Option<DateTime<Utc>>,
 }
 
 pub type ListID = i32;
-type SetID = i32;
-type ToDoID = i32;
+pub type SetID = i32;
+pub type ToDoID = i32;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
