@@ -16,21 +16,21 @@ struct CreateToDosResponse {
     hello: String,
 }
 
-#[post("/api/lists/create")]
+#[post("/api/lists")]
 pub async fn create_lists(_req_body: String) -> Json<CreateListsResponse> {
     Json(CreateListsResponse {
         hello: "World".to_string(),
     })
 }
 
-#[post("/api/sets/create")]
+#[post("/api/sets")]
 pub async fn create_sets(_req_body: String) -> Json<CreateSetsResponse> {
     Json(CreateSetsResponse {
         hello: "World".to_string(),
     })
 }
 
-#[post("/api/to_dos/create")]
+#[post("/api/to_dos")]
 pub async fn create_to_dos(_req_body: String) -> Json<CreateToDosResponse> {
     Json(CreateToDosResponse {
         hello: "World".to_string(),

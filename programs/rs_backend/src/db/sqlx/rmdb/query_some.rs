@@ -1,11 +1,14 @@
-use sqlx::{Error as SQLXError, Row, Sqlite, pool::PoolConnection};
+use actix_web::web::Data;
+use sqlx::{Error as SQLXError, Pool, Row, Sqlite};
 
 use crate::types::{List, ListID, Set, SetAddress, ToDo, ToDoAddress};
 
 pub async fn query_lists(
-    mut db_conn: PoolConnection<Sqlite>,
+    db_conn_pool: Data<Pool<Sqlite>>,
     adds: Vec<ListID>,
 ) -> Result<Vec<List>, SQLXError> {
+    let mut db_conn = db_conn_pool.acquire().await?;
+
     let query = format!(
         "SELECT * FROM lists WHERE lid IN ({});",
         adds.into_iter()
@@ -29,9 +32,11 @@ pub async fn query_lists(
 }
 
 pub async fn query_sets(
-    mut db_conn: PoolConnection<Sqlite>,
+    db_conn_pool: Data<Pool<Sqlite>>,
     adds: Vec<SetAddress>,
 ) -> Result<Vec<Set>, SQLXError> {
+    let mut db_conn = db_conn_pool.acquire().await?;
+
     let (whole_list_ids, singular_ids) = {
         let mut acc =
             adds.into_iter()
@@ -77,9 +82,11 @@ pub async fn query_sets(
 }
 
 pub async fn query_todos(
-    mut db_conn: PoolConnection<Sqlite>,
+    db_conn_pool: Data<Pool<Sqlite>>,
     adds: Vec<ToDoAddress>,
 ) -> Result<Vec<ToDo>, SQLXError> {
+    let mut db_conn = db_conn_pool.acquire().await?;
+
     let (whole_list_ids, whole_set_ids, singular_ids) = {
         let mut acc = adds.into_iter().fold(
             (String::new(), String::new(), String::new()),

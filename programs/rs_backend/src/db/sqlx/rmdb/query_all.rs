@@ -1,8 +1,11 @@
-use sqlx::{Error as SQLXError, Row, Sqlite, pool::PoolConnection};
+use actix_web::web::Data;
+use sqlx::{Error as SQLXError, Pool, Row, Sqlite};
 
 use crate::types::{List, Set, ToDo};
 
-pub async fn query_all_lists(mut db_conn: PoolConnection<Sqlite>) -> Result<Vec<List>, SQLXError> {
+pub async fn query_all_lists(db_conn_pool: Data<Pool<Sqlite>>) -> Result<Vec<List>, SQLXError> {
+    let mut db_conn = db_conn_pool.acquire().await?;
+
     let query_result = sqlx::query("SELECT * FROM lists")
         .fetch_all(&mut *db_conn)
         .await?;
@@ -19,7 +22,9 @@ pub async fn query_all_lists(mut db_conn: PoolConnection<Sqlite>) -> Result<Vec<
     Ok(lists)
 }
 
-pub async fn query_all_sets(mut db_conn: PoolConnection<Sqlite>) -> Result<Vec<Set>, SQLXError> {
+pub async fn query_all_sets(db_conn_pool: Data<Pool<Sqlite>>) -> Result<Vec<Set>, SQLXError> {
+    let mut db_conn = db_conn_pool.acquire().await?;
+
     let query_result = sqlx::query("SELECT * FROM sets")
         .fetch_all(&mut *db_conn)
         .await?;
@@ -37,7 +42,9 @@ pub async fn query_all_sets(mut db_conn: PoolConnection<Sqlite>) -> Result<Vec<S
     Ok(sets)
 }
 
-pub async fn query_all_todos(mut db_conn: PoolConnection<Sqlite>) -> Result<Vec<ToDo>, SQLXError> {
+pub async fn query_all_todos(db_conn_pool: Data<Pool<Sqlite>>) -> Result<Vec<ToDo>, SQLXError> {
+    let mut db_conn = db_conn_pool.acquire().await?;
+
     let query_result = sqlx::query("SELECT * FROM todos")
         .fetch_all(&mut *db_conn)
         .await?;
