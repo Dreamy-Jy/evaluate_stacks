@@ -1,21 +1,21 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct List {
     // I'll likely need to manually implement PartialEq, Eq, and Hash for this later
     pub id: i32,
     pub title: String,
 }
 
-#[derive(Serialize, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Set {
     pub id: i32,
     pub list_id: i32,
     pub title: String,
 }
 
-#[derive(Serialize, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ToDo {
     pub id: i32,
     pub set_id: Option<i32>,
