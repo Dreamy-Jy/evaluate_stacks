@@ -1,11 +1,12 @@
-use std::future::{self, Ready, ready};
+use std::{convert::Infallible, sync::Arc};
 
 use actix_web::{
-    FromRequest, HttpRequest,
+    FromRequest, HttpMessage, HttpRequest,
     dev::Payload,
     error::JsonPayloadError,
-    http::header,
-    web::{BytesMut, Data, Json, JsonConfig, head},
+    http::header::{ContentLength, Header},
+    mime,
+    web::BytesMut,
 };
 use futures_util::{StreamExt, future::LocalBoxFuture};
 use serde::de::DeserializeOwned;
@@ -18,27 +19,52 @@ pub enum MaybeJson<T> {
 }
 
 impl<T: DeserializeOwned> FromRequest for MaybeJson<T> {
-    type Error = JsonPayloadError;
+    type Error = Infallible;
     type Future = LocalBoxFuture<'static, Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
-        let content_length = match req.headers().get(header::CONTENT_LENGTH) {
-            None => 0,
-            Some(header) => header.to_str().unwrap_or("0").parse::<usize>().unwrap_or(0),
+        let json_config = req
+            .app_data::<MaybeJsonConfig>()
+            .cloned()
+            .unwrap_or_default();
+
+        let limit = json_config.get_limit();
+        let content_length = match ContentLength::parse(req) {
+            Ok(cl) => cl.0,
+            Err(_) => 0, // This isn't the right solution, this is really a parse error
         };
         if content_length <= 0 {
             return Box::pin(async { Ok(MaybeJson::Empty) });
+        } else if content_length > limit {
+            return Box::pin(async move {
+                Ok(MaybeJson::Invalid(JsonPayloadError::OverflowKnownLength {
+                    length: content_length,
+                    limit,
+                }))
+            });
         }
 
-        let content_type = match req.headers().get(header::CONTENT_TYPE) {
-            None => "",
-            Some(header) => header.to_str().unwrap_or(""),
-        };
-        if content_type != "application/json" {
-            return Box::pin(async { Ok(MaybeJson::Invalid(JsonPayloadError::ContentType)) });
+        let content_type_required = json_config.get_content_type_required();
+        let check_content_type = json_config.get_content_type();
+        match (content_type_required, req.mime_type()) {
+            (false, _) => {}
+            (true, Ok(None) | Err(_)) => {
+                return Box::pin(
+                    async move { Ok(MaybeJson::Invalid(JsonPayloadError::ContentType)) },
+                );
+            }
+            (true, Ok(Some(mime))) => {
+                let can_parse_json = mime.subtype() == mime::JSON
+                    || mime.suffix() == Some(mime::JSON)
+                    || check_content_type.is_some_and(|check| check(mime));
+                if !can_parse_json {
+                    return Box::pin(async move {
+                        Ok(MaybeJson::Invalid(JsonPayloadError::ContentType))
+                    });
+                }
+            }
         }
 
-        // I haven't checked the size requirement.
         let mut payload = payload.take();
         Box::pin(async move {
             let mut req_body = BytesMut::new();
@@ -48,18 +74,75 @@ impl<T: DeserializeOwned> FromRequest for MaybeJson<T> {
                     Err(e) => return Ok(MaybeJson::Invalid(JsonPayloadError::Payload(e))),
                 };
 
+                if req_body.len() + chunk.len() > limit {
+                    return Ok(MaybeJson::Invalid(JsonPayloadError::Overflow { limit }));
+                }
+
                 req_body.extend_from_slice(&chunk);
             }
 
             if req_body.is_empty() {
-                return Ok(MaybeJson::Empty)
+                return Ok(MaybeJson::Empty);
             }
 
             match json::from_slice::<T>(&req_body) {
                 Ok(json) => Ok(MaybeJson::Valid(json)),
-                Err(e) => Ok(MaybeJson::Invalid(JsonPayloadError::Deserialize(e)))
+                Err(e) => Ok(MaybeJson::Invalid(JsonPayloadError::Deserialize(e))),
             }
         })
+    }
+}
+
+#[derive(Clone)]
+pub struct MaybeJsonConfig {
+    limit: usize,
+    content_type: Option<Arc<dyn Fn(mime::Mime) -> bool + Send + Sync>>,
+    content_type_required: bool,
+}
+
+#[allow(dead_code)]
+impl MaybeJsonConfig {
+    /// Set maximum accepted payload size. By default this limit is 2MB.
+    pub fn limit(mut self, limit: usize) -> Self {
+        self.limit = limit;
+        self
+    }
+
+    pub fn get_limit(&self) -> usize {
+        self.limit
+    }
+
+    /// Set predicate for allowed content types.
+    pub fn content_type<F>(mut self, predicate: F) -> Self
+    where
+        F: Fn(mime::Mime) -> bool + Send + Sync + 'static,
+    {
+        self.content_type = Some(Arc::new(predicate));
+        self
+    }
+
+    pub fn get_content_type(&self) -> Option<&Arc<dyn Fn(mime::Mime) -> bool + Send + Sync>> {
+        self.content_type.as_ref()
+    }
+
+    /// Sets whether or not the request must have a `Content-Type` header to be parsed.
+    pub fn content_type_required(mut self, content_type_required: bool) -> Self {
+        self.content_type_required = content_type_required;
+        self
+    }
+
+    pub fn get_content_type_required(&self) -> bool {
+        self.content_type_required
+    }
+}
+
+impl Default for MaybeJsonConfig {
+    fn default() -> Self {
+        MaybeJsonConfig {
+            limit: 2_097_152, // 2 mb
+            content_type: None,
+            content_type_required: true,
+        }
     }
 }
 
@@ -68,12 +151,7 @@ mod test {
     use std::str;
 
     use super::*;
-    use actix_web::{
-        App, HttpResponse,
-        http::header,
-        test,
-        web::{self, JsonConfig},
-    };
+    use actix_web::{App, HttpResponse, http::header, test, web};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -92,38 +170,37 @@ mod test {
         match req {
             MaybeJson::Empty => HttpResponse::NoContent().finish(),
             MaybeJson::Valid(data) => HttpResponse::Ok().json(data),
-            MaybeJson::Invalid(e) => {
-                HttpResponse::BadRequest().body(format!("Invalid JSON: {}", e))
-            }
+            MaybeJson::Invalid(e) => match e {
+                JsonPayloadError::OverflowKnownLength { length, limit } => {
+                    HttpResponse::PayloadTooLarge().body(format!(
+                        "Payload overflow: {} bytes exceeds limit of {} bytes",
+                        length, limit
+                    ))
+                }
+                JsonPayloadError::Overflow { limit } => HttpResponse::PayloadTooLarge()
+                    .body(format!("Payload overflow: limit is {} bytes", limit)),
+                JsonPayloadError::ContentType => {
+                    HttpResponse::UnsupportedMediaType().body("Content type error")
+                }
+                JsonPayloadError::Deserialize(err) => {
+                    HttpResponse::BadRequest().body(format!("JSON deserialize error: {}", err))
+                }
+                JsonPayloadError::Payload(err) => {
+                    HttpResponse::BadRequest().body(format!("Payload error: {}", err))
+                }
+                _ => HttpResponse::NotImplemented()
+                    .body(format!("You shouldn't see this error: {}", e)),
+            },
         }
     }
 
+    // TEST MaybeJson START
+
     #[actix_web::test]
-    async fn fails_with_wrong_header() {
+    async fn valid_on_valid_input() {
         let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
 
-        // JsonConfig
-
-        let req = test::TestRequest::post()
-            .uri("/")
-            .insert_header((header::CONTENT_TYPE, "application/json"))
-            .set_json(ValidJson {
-                name: "Alice".to_string(),
-                age: 30,
-            })
-            .to_request();
-
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
-    }
-
-    //TEST: Valid JSON, Valid Request
-    //  Got valid JSON that matches expected type
-    #[actix_web::test]
-    async fn test_valid_json_right_type() {
-        let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
-
-        let req = test::TestRequest::post()
+        let req1 = test::TestRequest::post()
             .uri("/")
             .set_json(ValidJson {
                 name: "Alice".to_string(),
@@ -131,17 +208,25 @@ mod test {
             })
             .to_request();
 
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
+        let resp1: actix_web::dev::ServiceResponse = test::call_service(&app, req1).await;
+        assert!(resp1.status().is_success());
+        assert_eq!(resp1.status().as_u16(), 200);
+
+        let resp1_json: ValidJson = test::read_body_json(resp1).await;
+        assert_eq!(
+            resp1_json,
+            ValidJson {
+                name: "Alice".to_string(),
+                age: 30
+            }
+        );
     }
 
-    //TEST: Valid JSON, Invalid request
-    //  Got Valid Json that does not match expected type
     #[actix_web::test]
-    async fn test_valid_json_wrong_type() {
+    async fn invalid_on_invalid_input() {
         let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
 
-        let req = test::TestRequest::post()
+        let req1 = test::TestRequest::post()
             .uri("/")
             .set_json(InvalidJson {
                 list: vec!["item1".to_string(), "item2".to_string()],
@@ -149,201 +234,194 @@ mod test {
             })
             .to_request();
 
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_client_error());
-    }
+        let resp1: actix_web::dev::ServiceResponse = test::call_service(&app, req1).await;
+        assert!(resp1.status().is_client_error());
+        assert_eq!(resp1.status().as_u16(), 400);
 
-    //TEST: Invalid JSON
-    //  Test malformed JSON
-    #[actix_web::test]
-    async fn test_invalid_json_proper_headers() {
-        let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
-
-        let req = test::TestRequest::post()
+        let req2 = test::TestRequest::post()
             .uri("/")
             .set_payload("{invalid json")
             .insert_header((header::CONTENT_TYPE, "application/json"))
             .to_request();
 
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_client_error());
+        let resp2: actix_web::dev::ServiceResponse = test::call_service(&app, req2).await;
+        assert!(resp2.status().is_client_error());
+        assert_eq!(resp2.status().as_u16(), 400);
     }
 
-    //TEST: Non-JSON payloads with JSON header
     #[actix_web::test]
-    async fn test_non_json_payload_with_json_header() {
+    async fn empty_on_empty_input() {
         let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
 
-        let req = test::TestRequest::post()
-            .uri("/")
-            .set_payload("plain text content")
-            .insert_header((header::CONTENT_TYPE, "application/json"))
-            .to_request();
-
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_client_error());
-    }
-
-    //TEST: Non-JSON payloads without JSON header
-    #[actix_web::test]
-    async fn test_non_json_payload_without_json_header() {
-        let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
-
-        let req = test::TestRequest::post()
-            .uri("/")
-            .set_payload("plain text content")
-            .insert_header((header::CONTENT_TYPE, "text/plain"))
-            .to_request();
-
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
-        assert_eq!(resp.status().as_u16(), 204); // NoContent
-    }
-
-    //TEST: Empty Payloads - No Body, Json Header
-    #[actix_web::test]
-    async fn test_no_body_json_header() {
-        let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
-
-        let req = test::TestRequest::post()
+        let req1 = test::TestRequest::post()
             .uri("/")
             .insert_header((header::CONTENT_TYPE, "application/json"))
             .to_request();
 
-        let resp = test::call_service(&app, req).await;
-        // Empty body with JSON header should result in error
-        assert!(resp.status().is_client_error());
-    }
+        let resp1: actix_web::dev::ServiceResponse = test::call_service(&app, req1).await;
+        assert!(resp1.status().is_success());
+        assert_eq!(resp1.status().as_u16(), 204); // NoContent
 
-    //TEST: Empty Payloads - No Body, No Json Header
-    #[actix_web::test]
-    async fn test_no_body_no_json_header() {
-        let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
-
-        let req = test::TestRequest::post().uri("/").to_request();
-
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
-        assert_eq!(resp.status().as_u16(), 204); // NoContent
-    }
-
-    //TEST: Empty Payloads - Empty body, Json Header
-    #[actix_web::test]
-    async fn test_empty_body_json_header() {
-        let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
-
-        let req = test::TestRequest::post()
+        let req2 = test::TestRequest::post()
             .uri("/")
             .set_payload("")
             .insert_header((header::CONTENT_TYPE, "application/json"))
             .to_request();
 
+        let resp2: actix_web::dev::ServiceResponse = test::call_service(&app, req2).await;
+        assert!(resp2.status().is_success());
+        assert_eq!(resp2.status().as_u16(), 204); // NoContent
+    }
+
+    // TEST MaybeJson END
+
+    // TEST MaybeJsonConfig START
+
+    #[actix_web::test]
+    async fn invalid_with_wrong_header() {
+        let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
+
+        let req = test::TestRequest::post()
+            .uri("/")
+            .set_json(ValidJson {
+                name: "Alice".to_string(),
+                age: 30,
+            })
+            .insert_header((header::CONTENT_TYPE, mime::TEXT_PLAIN))
+            .to_request();
+
         let resp = test::call_service(&app, req).await;
-        // Empty string body with JSON header should result in error
         assert!(resp.status().is_client_error());
+        assert_eq!(resp.status().as_u16(), 415); // Unsupported Media Type
+        assert_eq!(
+            str::from_utf8(&test::read_body(resp).await).unwrap(),
+            "Content type error"
+        );
     }
 
-    //TEST: Empty Payloads - Empty body, No Json Header
     #[actix_web::test]
-    async fn test_empty_body_no_json_header() {
-        let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
-
-        let req = test::TestRequest::post()
-            .uri("/")
-            .set_payload("")
-            .insert_header((header::CONTENT_TYPE, "text/plain"))
-            .to_request();
-
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
-        assert_eq!(resp.status().as_u16(), 204); // NoContent
-    }
-
-    //TEST: Empty Payloads - Empty JSON Object, Json Header
-    #[actix_web::test]
-    async fn test_empty_json_object_json_header() {
-        let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
-
-        let req = test::TestRequest::post()
-            .uri("/")
-            .set_payload("{}")
-            .insert_header((header::CONTENT_TYPE, "application/json"))
-            .to_request();
-
-        let resp = test::call_service(&app, req).await;
-        // Empty JSON object doesn't match ValidJson structure (missing required fields)
-        assert!(resp.status().is_client_error());
-    }
-
-    //TEST: Empty Payloads - Empty JSON Object, No Json Header
-    #[actix_web::test]
-    async fn test_empty_json_object_no_json_header() {
-        let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
-
-        let req = test::TestRequest::post()
-            .uri("/")
-            .set_payload("{}")
-            .insert_header((header::CONTENT_TYPE, "text/plain"))
-            .to_request();
-
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
-        assert_eq!(resp.status().as_u16(), 204); // NoContent
-    }
-
-    //TEST: Empty Payloads - Empty JSON Array, Json Header
-    #[actix_web::test]
-    async fn test_empty_json_array_json_header() {
-        let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
-
-        let req = test::TestRequest::post()
-            .uri("/")
-            .set_payload("[]")
-            .insert_header((header::CONTENT_TYPE, "application/json"))
-            .to_request();
-
-        let resp = test::call_service(&app, req).await;
-        // Empty JSON array doesn't match ValidJson structure
-        assert!(resp.status().is_client_error());
-    }
-
-    //TEST: Empty Payloads - Empty JSON Array, No Json Header
-    #[actix_web::test]
-    async fn test_empty_json_array_no_json_header() {
-        let app = test::init_service(App::new().route("/", web::to(test_handler))).await;
-
-        let req = test::TestRequest::post()
-            .uri("/")
-            .set_payload("[]")
-            .insert_header((header::CONTENT_TYPE, "text/plain"))
-            .to_request();
-
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
-        assert_eq!(resp.status().as_u16(), 204); // NoContent
-    }
-
-    //TEST: JSON That Exceeds Size Limit
-    #[actix_web::test]
-    async fn test_json_exceeds_size_limit() {
+    async fn invalid_on_known_overflow() {
+        let limit = 100;
         let app = test::init_service(
             App::new()
-                .app_data(JsonConfig::default().limit(100)) // 100 bytes limit
+                .app_data(MaybeJsonConfig::default().limit(limit)) // 100 bytes limit
                 .route("/", web::to(test_handler)),
         )
         .await;
 
+        let payload = format!(r#"{{"name":"{}","age":30}}"#, "A".repeat(200));
+
         // Create a large JSON payload that exceeds the 100 byte limit
-        let large_name = "A".repeat(200);
         let req = test::TestRequest::post()
             .uri("/")
-            .set_json(ValidJson {
-                name: large_name,
-                age: 30,
-            })
+            .insert_header((header::CONTENT_TYPE, mime::APPLICATION_JSON))
+            .set_payload(payload.clone())
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        println!("{:?}", resp);
+        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status().as_u16(), 413); // Payload Too Large
+        assert_eq!(
+            str::from_utf8(&test::read_body(resp).await).unwrap(),
+            format!(
+                "Payload overflow: {} bytes exceeds limit of {} bytes",
+                payload.as_bytes().len(),
+                limit
+            )
+        );
+    }
+
+    #[actix_web::test]
+    async fn invalid_on_unknown_overflow() {
+        let limit = 100;
+        let app = test::init_service(
+            App::new()
+                .app_data(MaybeJsonConfig::default().limit(limit)) // 100 bytes limit
+                .route("/", web::to(test_handler)),
+        )
+        .await;
+
+        let payload = format!(r#"{{"name":"{}","age":30}}"#, "A".repeat(200));
+
+        // Create a large JSON payload without Content-Length header
+        let req = test::TestRequest::post()
+            .uri("/")
+            .insert_header((header::CONTENT_TYPE, "application/json"))
+            .set_payload(payload)
+            .insert_header((header::CONTENT_LENGTH, "2"))
             .to_request();
 
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_client_error());
+        assert_eq!(resp.status().as_u16(), 413); // Payload Too Large
+        assert_eq!(
+            str::from_utf8(&test::read_body(resp).await).unwrap(),
+            format!("Payload overflow: limit is {} bytes", limit)
+        );
     }
+
+    #[actix_web::test]
+    async fn can_extend_acceptable_content_types() {
+        let app = test::init_service(
+            App::new()
+                .app_data(MaybeJsonConfig::default().content_type(|mime: mime::Mime| {
+                    mime.type_() == mime::TEXT && mime.subtype() == mime::PLAIN
+                }))
+                .route("/", web::to(test_handler)),
+        )
+        .await;
+
+        let req = test::TestRequest::post()
+            .uri("/")
+            .set_json(ValidJson {
+                name: "Alice".to_string(),
+                age: 30,
+            })
+            .insert_header((header::CONTENT_TYPE, "text/plain"))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+
+        assert!(resp.status().is_success());
+        assert_eq!(resp.status().as_u16(), 200);
+
+        let req2 = test::TestRequest::post()
+            .uri("/")
+            .set_json(ValidJson {
+                name: "Bob".to_string(),
+                age: 25,
+            })
+            .insert_header((header::CONTENT_TYPE, "application/json"))
+            .to_request();
+
+        let resp2 = test::call_service(&app, req2).await;
+        assert!(resp2.status().is_success());
+        assert_eq!(resp2.status().as_u16(), 200);
+    }
+
+    #[actix_web::test]
+    async fn can_turn_off_content_type_check() {
+        let app = test::init_service(
+            App::new()
+                .app_data(MaybeJsonConfig::default().content_type_required(false))
+                .route("/", web::to(test_handler)),
+        )
+        .await;
+
+        let req = test::TestRequest::post()
+            .uri("/")
+            .set_json(ValidJson {
+                name: "Alice".to_string(),
+                age: 30,
+            })
+            .insert_header((header::CONTENT_TYPE, "text/plain"))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert!(resp.status().is_success());
+        assert_eq!(resp.status().as_u16(), 200);
+    }
+
+    // TEST MaybeJsonConfig END
 }
