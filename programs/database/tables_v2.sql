@@ -1,22 +1,22 @@
-CREATE TABLE lists (
+CREATE TABLE Lists (
     id INTEGER PRIMARY KEY,
     title TEXT NOT NULL
 );
 
-CREATE TABLE sets (
+CREATE TABLE Sets (
     id INTEGER PRIMARY KEY,
     list_id INTEGER NOT NULL,
-    title TEXT NOT NULL
+    title TEXT NOT NULL,
 
     FOREIGN KEY (list_id) REFERENCES lists (id) ON DELETE CASCADE
 );
 
-CREATE TABLE todos (
+CREATE TABLE Todos (
     id INTEGER PRIMARY KEY,
     list_id INTEGER NOT NULL,
     set_id INTEGER,
     title TEXT NOT NULL,
-    complete BOOLEAN NOT NULL DEFAULT 0
+    complete BOOLEAN NOT NULL DEFAULT 0,
     due_date DATETIME,
 
     FOREIGN KEY (list_id) REFERENCES lists (id) ON DELETE CASCADE,
