@@ -25,21 +25,6 @@ pub struct ToDo {
     pub due_date: Option<DateTime<Utc>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
-#[serde(untagged)]
-pub enum SetAddress {
-    WholeList(ListID),
-    Singular(ListID, SetID),
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
-#[serde(untagged)]
-pub enum ToDoAddress {
-    WholeList(ListID),
-    WholeSet(ListID, SetID),
-    Singular(ListID, Option<SetID>, ToDoID),
-}
-
 pub type ListID = i32;
 pub type SetID = i32;
 pub type ToDoID = i32;

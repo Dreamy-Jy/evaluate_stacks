@@ -1,16 +1,18 @@
-use actix_web::web::Data;
-use sqlx::{Column, Error as SQLXError, Pool, Row, Sqlite};
+use std::collections::HashSet;
 
-use crate::types::{ListID, SetAddress, ToDoAddress};
+use actix_web::web::Data;
+use sqlx::{Error as SQLXError, Pool, Row, Sqlite};
+
+use crate::types::{ListID, SetID, SetQueryTarget, ToDoID, ToDoQueryTarget};
 
 pub async fn delete_lists(
     db_conn_pool: Data<Pool<Sqlite>>,
-    adds: Vec<ListID>,
-) -> Result<(), SQLXError> {
+    adds: HashSet<ListID>,
+) -> Result<HashSet<ListID>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query = format!(
-        "DELETE FROM lists WHERE lid IN ({});",
+        "DELETE FROM Lists WHERE id IN ({}) RETURNING id;",
         adds.into_iter()
             .map(|id| id.to_string())
             .collect::<Vec<String>>()
@@ -19,19 +21,18 @@ pub async fn delete_lists(
 
     let query_result = sqlx::query(query.as_str()).fetch_all(&mut *db_conn).await?;
 
+    let mut deleted_ids = HashSet::new();
     for row in query_result {
-        for col in row.columns() {
-            println!("Column: {}", col.name());
-        }
+        deleted_ids.insert(row.get("id"));
     }
 
-    Ok(())
+    Ok(deleted_ids)
 }
 
 pub async fn delete_sets(
     db_conn_pool: Data<Pool<Sqlite>>,
-    adds: Vec<SetAddress>,
-) -> Result<(), SQLXError> {
+    adds: HashSet<SetQueryTarget>,
+) -> Result<HashSet<SetID>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let (whole_list_ids, singular_ids) = {
@@ -39,12 +40,12 @@ pub async fn delete_sets(
             adds.into_iter()
                 .fold((String::new(), String::new()), |(mut wl, mut s), ele| {
                     match ele {
-                        SetAddress::WholeList(lid) => {
-                            wl.push_str(&lid.to_string());
+                        SetQueryTarget::List(list_id) => {
+                            wl.push_str(&list_id.to_string());
                             wl.push_str(", ");
                         }
-                        SetAddress::Singular(lid, sid) => {
-                            s.push_str(&format!("({}, {})", lid, sid));
+                        SetQueryTarget::Set(set_id) => {
+                            s.push_str(&set_id.to_string());
                             s.push_str(", ");
                         }
                     }
@@ -59,25 +60,24 @@ pub async fn delete_sets(
     };
 
     let query = format!(
-        "DELETE FROM sets WHERE lid IN ({}) OR (lid, sid) IN ({});",
+        "DELETE FROM Sets WHERE list_id IN ({}) OR id IN ({}) RETURNING id;",
         whole_list_ids, singular_ids
     );
 
     let query_result = sqlx::query(query.as_str()).fetch_all(&mut *db_conn).await?;
 
+    let mut deleted_ids = HashSet::new();
     for row in query_result {
-        for col in row.columns() {
-            println!("Column: {}", col.name());
-        }
+        deleted_ids.insert(row.get("id"));
     }
 
-    Ok(())
+    Ok(deleted_ids)
 }
 
 pub async fn delete_todos(
     db_conn_pool: Data<Pool<Sqlite>>,
-    adds: Vec<ToDoAddress>,
-) -> Result<(), SQLXError> {
+    adds: HashSet<ToDoQueryTarget>,
+) -> Result<HashSet<ToDoID>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let (whole_list_ids, whole_set_ids, singular_ids) = {
@@ -85,21 +85,16 @@ pub async fn delete_todos(
             (String::new(), String::new(), String::new()),
             |(mut wl, mut ws, mut s), ele| {
                 match ele {
-                    ToDoAddress::WholeList(lid) => {
-                        wl.push_str(&lid.to_string());
+                    ToDoQueryTarget::List(list_id) => {
+                        wl.push_str(&list_id.to_string());
                         wl.push_str(", ");
                     }
-                    ToDoAddress::WholeSet(lid, sid) => {
-                        ws.push_str(&format!("({}, {})", lid, sid));
+                    ToDoQueryTarget::Set(set_id) => {
+                        ws.push_str(&set_id.to_string());
                         ws.push_str(", ");
                     }
-                    ToDoAddress::Singular(lid, sid, tdid) => {
-                        let sid_str: String = match sid {
-                            Some(sid) => sid.to_string(),
-                            None => "NULL".to_string(),
-                        };
-
-                        s.push_str(&format!("({}, {}, {})", lid, sid_str, tdid));
+                    ToDoQueryTarget::ToDo(todo_id) => {
+                        s.push_str(&todo_id.to_string());
                         s.push_str(", ");
                     }
                 }
@@ -116,17 +111,16 @@ pub async fn delete_todos(
     };
 
     let query: String = format!(
-        "DELETE FROM todos WHERE lid IN ({}) OR (lid, sid) IN ({}) OR (lid, sid, tdid) IN ({});",
+        "DELETE FROM Todos WHERE list_id IN ({}) OR set_id IN ({}) OR id IN ({}) RETURNING id;",
         whole_list_ids, whole_set_ids, singular_ids
     );
 
     let query_result = sqlx::query(query.as_str()).fetch_all(&mut *db_conn).await?;
 
+    let mut deleted_ids = HashSet::new();
     for row in query_result {
-        for col in row.columns() {
-            println!("Column: {}", col.name());
-        }
+        deleted_ids.insert(row.get("id"));
     }
 
-    Ok(())
+    Ok(deleted_ids)
 }
