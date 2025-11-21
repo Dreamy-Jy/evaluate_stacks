@@ -1,18 +1,20 @@
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 use actix_web::web::Data;
 use sqlx::{Error as SQLXError, Pool, Row, Sqlite};
 
 use crate::types::{List, Set, ToDo};
 
-pub async fn query_all_lists(db_conn_pool: Data<Pool<Sqlite>>) -> Result<HashSet<List>, SQLXError> {
+pub async fn query_all_lists(
+    db_conn_pool: Data<Pool<Sqlite>>,
+) -> Result<BTreeSet<List>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query_result = sqlx::query("SELECT * FROM lists")
         .fetch_all(&mut *db_conn)
         .await?;
 
-    let mut lists = HashSet::new();
+    let mut lists = BTreeSet::new();
     for row in query_result {
         let list = List {
             id: row.get("id"),
@@ -24,14 +26,14 @@ pub async fn query_all_lists(db_conn_pool: Data<Pool<Sqlite>>) -> Result<HashSet
     Ok(lists)
 }
 
-pub async fn query_all_sets(db_conn_pool: Data<Pool<Sqlite>>) -> Result<HashSet<Set>, SQLXError> {
+pub async fn query_all_sets(db_conn_pool: Data<Pool<Sqlite>>) -> Result<BTreeSet<Set>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query_result = sqlx::query("SELECT * FROM sets")
         .fetch_all(&mut *db_conn)
         .await?;
 
-    let mut sets = HashSet::new();
+    let mut sets = BTreeSet::new();
     for row in query_result {
         let set = Set {
             id: row.get("id"),
@@ -44,14 +46,16 @@ pub async fn query_all_sets(db_conn_pool: Data<Pool<Sqlite>>) -> Result<HashSet<
     Ok(sets)
 }
 
-pub async fn query_all_todos(db_conn_pool: Data<Pool<Sqlite>>) -> Result<HashSet<ToDo>, SQLXError> {
+pub async fn query_all_todos(
+    db_conn_pool: Data<Pool<Sqlite>>,
+) -> Result<BTreeSet<ToDo>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query_result = sqlx::query("SELECT * FROM todos")
         .fetch_all(&mut *db_conn)
         .await?;
 
-    let mut todos = HashSet::new();
+    let mut todos = BTreeSet::new();
     for row in query_result {
         let todo = ToDo {
             id: row.get("id"),

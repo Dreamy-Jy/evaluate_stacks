@@ -13,15 +13,15 @@ use actix_web::{
     web::{Data, Json},
 };
 use sqlx::{Pool, Sqlite};
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
 type ReadListsRequest = HashSet<ListID>;
 type ReadSetsRequest = HashSet<SetQueryTarget>;
 type ReadToDosRequest = HashSet<ToDoQueryTarget>;
 
-type ReadListsResponse = HashSet<List>;
-type ReadSetsResponse = HashSet<Set>;
-type ReadToDosResponse = HashSet<ToDo>;
+type ReadListsResponse = BTreeSet<List>;
+type ReadSetsResponse = BTreeSet<Set>;
+type ReadToDosResponse = BTreeSet<ToDo>;
 
 #[get("/api/lists")]
 pub async fn read_lists(

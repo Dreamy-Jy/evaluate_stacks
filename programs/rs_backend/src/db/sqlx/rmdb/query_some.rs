@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
 use actix_web::web::Data;
 use sqlx::{Error as SQLXError, Pool, Row, Sqlite};
@@ -8,7 +8,7 @@ use crate::types::{List, ListID, Set, SetQueryTarget, ToDo, ToDoQueryTarget};
 pub async fn query_lists(
     db_conn_pool: Data<Pool<Sqlite>>,
     adds: HashSet<ListID>,
-) -> Result<HashSet<List>, SQLXError> {
+) -> Result<BTreeSet<List>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query = format!(
@@ -21,7 +21,7 @@ pub async fn query_lists(
 
     let query_result = sqlx::query(query.as_str()).fetch_all(&mut *db_conn).await?;
 
-    let mut lists = HashSet::new();
+    let mut lists = BTreeSet::new();
     for row in query_result {
         let list = List {
             id: row.get("id"),
@@ -36,7 +36,7 @@ pub async fn query_lists(
 pub async fn query_sets(
     db_conn_pool: Data<Pool<Sqlite>>,
     adds: HashSet<SetQueryTarget>,
-) -> Result<HashSet<Set>, SQLXError> {
+) -> Result<BTreeSet<Set>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let (whole_list_ids, singular_ids) = {
@@ -70,7 +70,7 @@ pub async fn query_sets(
 
     let query_result = sqlx::query(query.as_str()).fetch_all(&mut *db_conn).await?;
 
-    let mut sets = HashSet::new();
+    let mut sets = BTreeSet::new();
     for row in query_result {
         let set = Set {
             id: row.get("id"),
@@ -86,7 +86,7 @@ pub async fn query_sets(
 pub async fn query_todos(
     db_conn_pool: Data<Pool<Sqlite>>,
     adds: HashSet<ToDoQueryTarget>,
-) -> Result<HashSet<ToDo>, SQLXError> {
+) -> Result<BTreeSet<ToDo>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let (whole_list_ids, whole_set_ids, singular_ids) = {
@@ -126,7 +126,7 @@ pub async fn query_todos(
 
     let query_result = sqlx::query(query.as_str()).fetch_all(&mut *db_conn).await?;
 
-    let mut todos = HashSet::new();
+    let mut todos = BTreeSet::new();
     for row in query_result {
         let todo = ToDo {
             id: row.get("id"),
