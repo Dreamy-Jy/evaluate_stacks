@@ -37,13 +37,11 @@ pub async fn update_lists(
             .await?;
 
         for row in query_result {
-            output.insert(List {
+            output.replace(List {
                 id: row.get("id"),
                 title: row.get("title"),
             });
         }
-
-        continue;
     }
 
     transaction.commit().await?;
@@ -92,11 +90,7 @@ pub async fn update_sets(
             .await?;
 
         for row in query_result {
-            // Check for repeated IDs and
-            // remove the previous entry
-            // if it exists pop it and
-            // insert the new entry
-            output.insert(Set {
+            output.replace(Set {
                 id: row.get("id"),
                 list_id: row.get("list_id"),
                 title: row.get("title"),
@@ -163,11 +157,7 @@ pub async fn update_todos(
             .await?;
 
         for row in query_result {
-            // Check for repeated IDs and
-            // remove the previous entry
-            // if it exists pop it and
-            // insert the new entry
-            output.insert(ToDo {
+            output.replace(ToDo {
                 id: row.get("id"),
                 list_id: row.get("list_id"),
                 set_id: row.get("set_id"),
@@ -182,78 +172,3 @@ pub async fn update_todos(
 
     Ok(output)
 }
-
-/*
-let query_template =
-    "UPDATE todos SET {} WHERE list_id IN ({}) OR set_id IN ({}) OR id IN ({}) RETURNING * ;";
-
-let (list_id, set_id, title, complete, due_date) = (
-    "list_id = CASE".to_string(),
-    "set_id = CASE".to_string(),
-    "title = CASE".to_string(),
-    "complete = CASE".to_string(),
-    "due_date = CASE".to_string(),
-);
-
-let (list_ids, set_ids, todo_ids) = (String::new(), String::new(), String::new());
-
-for update in mods {
-    match update.target {
-        ToDoQueryTarget::List(id) => {
-            list_id.push_str(format!("WHEN list_id = {}", id).as_str());
-            set_id.push_str(format!("WHEN list_id = {}", id).as_str());
-            title.push_str(format!("WHEN list_id = {}", id).as_str());
-            complete.push_str(format!("WHEN list_id = {}", id).as_str());
-            due_date.push_str(format!("WHEN list_id = {}", id).as_str());
-            list_ids.push_str(format!("{}, ", id).as_str());
-        }
-        ToDoQueryTarget::Set(id) => {
-            list_id.push_str(format!("WHEN set_id = {}", id).as_str());
-            set_id.push_str(format!("WHEN set_id = {}", id).as_str());
-            title.push_str(format!("WHEN set_id = {}", id).as_str());
-            complete.push_str(format!("WHEN set_id = {}", id).as_str());
-            due_date.push_str(format!("WHEN set_id = {}", id).as_str());
-            set_ids.push_str(format!("{}, ", id).as_str());
-        }
-        ToDoQueryTarget::ToDo(id) => {
-            list_id.push_str(format!("WHEN id = {}", id).as_str());
-            set_id.push_str(format!("WHEN id = {}", id).as_str());
-            title.push_str(format!("WHEN id = {}", id).as_str());
-            complete.push_str(format!("WHEN id = {}", id).as_str());
-            due_date.push_str(format!("WHEN id = {}", id).as_str());
-            todo_ids.push_str(format!("{}, ", id).as_str());
-        }
-    }
-
-    match update.list_id {
-        Some(id) => list_id.push_str(format!("THEN {}", id).as_str()),
-        None => list_id.push_str("THEN list_id"),
-    }
-
-    match update.set_id {
-        Some(id) => set_id.push_str(format!("THEN {}", id).as_str()),
-        None => set_id.push_str("THEN set_id"),
-    }
-
-    match update.complete {
-        Some(b) => complete.push_str(format!("THEN {}", b).as_str()),
-        None => complete.push_str("THEN complete"),
-    }
-
-    match update.due_date {
-        Some(date) => due_date.push_str(format!("THEN '{}'", date.to_rfc3339()).as_str()),
-        None => due_date.push_str("THEN due_date"),
-    }
-
-    match update.title {
-        Some(t) => title.push_str(format!("THEN '{}'", t).as_str()),
-        None => title.push_str("THEN title"),
-    }
-}
-
-list_id.push_str("ELSE list_id END, ");
-set_id.push_str("ELSE set_id END, ");
-complete.push_str("ELSE complete END, ");
-due_date.push_str("ELSE due_date END, ");
-title.push_str("ELSE title END");
-*/
