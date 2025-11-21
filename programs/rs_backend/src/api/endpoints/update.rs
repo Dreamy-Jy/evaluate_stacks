@@ -4,12 +4,11 @@ use actix_web::{
     put,
     web::{Data, Json},
 };
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Sqlite};
 
 use crate::{
     api::{
+        UpdateList, UpdateSet, UpdateToDo,
         types::{JsonError, MaybeJson},
         utils::query_some,
     },
@@ -17,33 +16,11 @@ use crate::{
         update_lists as db_update_lists, update_sets as db_update_sets,
         update_todos as db_update_todos,
     },
-    types::{List, ListID, Set, SetID, SetQueryTarget, ToDo, ToDoQueryTarget},
+    types::{List, Set, ToDo},
 };
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct UpdateList {
-    pub list_id: ListID,
-    pub title: String,
-}
 type UpdateListsRequest = Vec<UpdateList>;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct UpdateSet {
-    pub target: SetQueryTarget,
-    pub list_id: Option<ListID>,
-    pub title: Option<String>,
-}
 type UpdateSetsRequest = Vec<UpdateSet>;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct UpdateToDo {
-    pub target: ToDoQueryTarget,
-    pub set_id: Option<SetID>,
-    pub list_id: Option<ListID>,
-    pub title: Option<String>,
-    pub complete: Option<bool>,
-    pub due_date: Option<DateTime<Utc>>,
-}
 type UpdateToDosRequest = Vec<UpdateToDo>;
 
 type UpdateListsResponse = BTreeSet<List>;
