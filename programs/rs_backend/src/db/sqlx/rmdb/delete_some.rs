@@ -1,7 +1,10 @@
 use std::collections::HashSet;
 
 use actix_web::web::Data;
-use sqlx::{Error as SQLXError, Pool, Row, Sqlite};
+use sqlx::{
+    Error::{self as SQLXError, InvalidArgument},
+    Pool, Row, Sqlite,
+};
 
 use crate::types::{ListID, SetID, SetQueryTarget, ToDoID, ToDoQueryTarget};
 
@@ -9,6 +12,12 @@ pub async fn delete_lists(
     db_conn_pool: Data<Pool<Sqlite>>,
     adds: HashSet<ListID>,
 ) -> Result<HashSet<ListID>, SQLXError> {
+    if adds.len() == 0 {
+        return Err(InvalidArgument(
+            "Caller Provided no entries to the database".to_string(),
+        ));
+    }
+
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query = format!(
@@ -33,6 +42,12 @@ pub async fn delete_sets(
     db_conn_pool: Data<Pool<Sqlite>>,
     adds: HashSet<SetQueryTarget>,
 ) -> Result<HashSet<SetID>, SQLXError> {
+    if adds.len() == 0 {
+        return Err(InvalidArgument(
+            "Caller Provided no entries to the database".to_string(),
+        ));
+    }
+
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let (whole_list_ids, singular_ids) = {
@@ -78,6 +93,12 @@ pub async fn delete_todos(
     db_conn_pool: Data<Pool<Sqlite>>,
     adds: HashSet<ToDoQueryTarget>,
 ) -> Result<HashSet<ToDoID>, SQLXError> {
+    if adds.len() == 0 {
+        return Err(InvalidArgument(
+            "Caller Provided no entries to the database".to_string(),
+        ));
+    }
+
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let (whole_list_ids, whole_set_ids, singular_ids) = {
