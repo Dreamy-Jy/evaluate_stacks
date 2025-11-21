@@ -1,12 +1,6 @@
-mod create;
-mod delete;
-mod read;
+mod endpoints;
 mod types;
-mod update;
 mod utils;
 
-pub use create::*;
-pub use delete::*;
-pub use read::*;
+pub use endpoints::*;
 pub use types::queries::*;
-pub use update::*;
