@@ -7,7 +7,7 @@ mod types;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let pool = match SqlitePool::connect("../database/database.db").await {
+    let pool = match SqlitePool::connect("../database/database_v2.db").await {
         Ok(p) => p,
         Err(e) => {
             panic!("Failed to connect to the database: {}", e);

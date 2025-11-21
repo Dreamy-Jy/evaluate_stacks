@@ -1,65 +1,67 @@
+use std::collections::HashSet;
+
 use actix_web::web::Data;
 use sqlx::{Error as SQLXError, Pool, Row, Sqlite};
 
 use crate::types::{List, Set, ToDo};
 
-pub async fn query_all_lists(db_conn_pool: Data<Pool<Sqlite>>) -> Result<Vec<List>, SQLXError> {
+pub async fn query_all_lists(db_conn_pool: Data<Pool<Sqlite>>) -> Result<HashSet<List>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query_result = sqlx::query("SELECT * FROM lists")
         .fetch_all(&mut *db_conn)
         .await?;
 
-    let mut lists = Vec::new();
+    let mut lists = HashSet::new();
     for row in query_result {
         let list = List {
-            id: row.get("lid"),
+            id: row.get("id"),
             title: row.get("title"),
         };
-        lists.push(list);
+        lists.insert(list);
     }
 
     Ok(lists)
 }
 
-pub async fn query_all_sets(db_conn_pool: Data<Pool<Sqlite>>) -> Result<Vec<Set>, SQLXError> {
+pub async fn query_all_sets(db_conn_pool: Data<Pool<Sqlite>>) -> Result<HashSet<Set>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query_result = sqlx::query("SELECT * FROM sets")
         .fetch_all(&mut *db_conn)
         .await?;
 
-    let mut sets = Vec::new();
+    let mut sets = HashSet::new();
     for row in query_result {
         let set = Set {
-            id: row.get("sid"),
-            list_id: row.get("lid"),
+            id: row.get("id"),
+            list_id: row.get("list_id"),
             title: row.get("title"),
         };
-        sets.push(set);
+        sets.insert(set);
     }
 
     Ok(sets)
 }
 
-pub async fn query_all_todos(db_conn_pool: Data<Pool<Sqlite>>) -> Result<Vec<ToDo>, SQLXError> {
+pub async fn query_all_todos(db_conn_pool: Data<Pool<Sqlite>>) -> Result<HashSet<ToDo>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query_result = sqlx::query("SELECT * FROM todos")
         .fetch_all(&mut *db_conn)
         .await?;
 
-    let mut todos = Vec::new();
+    let mut todos = HashSet::new();
     for row in query_result {
         let todo = ToDo {
-            id: row.get("tdid"),
-            list_id: row.get("lid"),
-            set_id: row.get("sid"),
+            id: row.get("id"),
+            list_id: row.get("list_id"),
+            set_id: row.get("set_id"),
             title: row.get("title"),
             complete: row.get("complete"),
             due_date: row.get("due_date"),
         };
-        todos.push(todo);
+        todos.insert(todo);
     }
 
     Ok(todos)

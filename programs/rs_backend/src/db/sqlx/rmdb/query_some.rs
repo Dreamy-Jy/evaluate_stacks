@@ -1,16 +1,18 @@
+use std::collections::HashSet;
+
 use actix_web::web::Data;
 use sqlx::{Error as SQLXError, Pool, Row, Sqlite};
 
-use crate::types::{List, ListID, Set, SetAddress, ToDo, ToDoAddress};
+use crate::types::{List, ListID, Set, SetQueryTarget, ToDo, ToDoQueryTarget};
 
 pub async fn query_lists(
     db_conn_pool: Data<Pool<Sqlite>>,
-    adds: Vec<ListID>,
-) -> Result<Vec<List>, SQLXError> {
+    adds: HashSet<ListID>,
+) -> Result<HashSet<List>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query = format!(
-        "SELECT * FROM lists WHERE lid IN ({});",
+        "SELECT * FROM Lists WHERE id IN ({});",
         adds.into_iter()
             .map(|id| id.to_string())
             .collect::<Vec<String>>()
@@ -19,13 +21,13 @@ pub async fn query_lists(
 
     let query_result = sqlx::query(query.as_str()).fetch_all(&mut *db_conn).await?;
 
-    let mut lists = Vec::new();
+    let mut lists = HashSet::new();
     for row in query_result {
         let list = List {
-            id: row.get("lid"),
+            id: row.get("id"),
             title: row.get("title"),
         };
-        lists.push(list);
+        lists.insert(list);
     }
 
     Ok(lists)
@@ -33,8 +35,8 @@ pub async fn query_lists(
 
 pub async fn query_sets(
     db_conn_pool: Data<Pool<Sqlite>>,
-    adds: Vec<SetAddress>,
-) -> Result<Vec<Set>, SQLXError> {
+    adds: HashSet<SetQueryTarget>,
+) -> Result<HashSet<Set>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let (whole_list_ids, singular_ids) = {
@@ -42,12 +44,12 @@ pub async fn query_sets(
             adds.into_iter()
                 .fold((String::new(), String::new()), |(mut wl, mut s), ele| {
                     match ele {
-                        SetAddress::WholeList(lid) => {
-                            wl.push_str(&lid.to_string());
+                        SetQueryTarget::List(id) => {
+                            wl.push_str(&id.to_string());
                             wl.push_str(", ");
                         }
-                        SetAddress::Singular(lid, sid) => {
-                            s.push_str(&format!("({}, {})", lid, sid));
+                        SetQueryTarget::Set(id) => {
+                            s.push_str(&id.to_string());
                             s.push_str(", ");
                         }
                     }
@@ -62,20 +64,20 @@ pub async fn query_sets(
     };
 
     let query = format!(
-        "SELECT * FROM sets WHERE lid IN ({}) OR (lid, sid) IN ({});",
+        "SELECT * FROM Sets WHERE list_id IN ({}) OR id IN ({});",
         whole_list_ids, singular_ids
     );
 
     let query_result = sqlx::query(query.as_str()).fetch_all(&mut *db_conn).await?;
 
-    let mut sets = Vec::new();
+    let mut sets = HashSet::new();
     for row in query_result {
         let set = Set {
-            id: row.get("sid"),
-            list_id: row.get("lid"),
+            id: row.get("id"),
+            list_id: row.get("list_id"),
             title: row.get("title"),
         };
-        sets.push(set);
+        sets.insert(set);
     }
 
     Ok(sets)
@@ -83,8 +85,8 @@ pub async fn query_sets(
 
 pub async fn query_todos(
     db_conn_pool: Data<Pool<Sqlite>>,
-    adds: Vec<ToDoAddress>,
-) -> Result<Vec<ToDo>, SQLXError> {
+    adds: HashSet<ToDoQueryTarget>,
+) -> Result<HashSet<ToDo>, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let (whole_list_ids, whole_set_ids, singular_ids) = {
@@ -92,21 +94,16 @@ pub async fn query_todos(
             (String::new(), String::new(), String::new()),
             |(mut wl, mut ws, mut s), ele| {
                 match ele {
-                    ToDoAddress::WholeList(lid) => {
-                        wl.push_str(&lid.to_string());
+                    ToDoQueryTarget::List(id) => {
+                        wl.push_str(&id.to_string());
                         wl.push_str(", ");
                     }
-                    ToDoAddress::WholeSet(lid, sid) => {
-                        ws.push_str(&format!("({}, {})", lid, sid));
+                    ToDoQueryTarget::Set(id) => {
+                        ws.push_str(&id.to_string());
                         ws.push_str(", ");
                     }
-                    ToDoAddress::Singular(lid, sid, tdid) => {
-                        let sid_str: String = match sid {
-                            Some(sid) => sid.to_string(),
-                            None => "NULL".to_string(),
-                        };
-
-                        s.push_str(&format!("({}, {}, {})", lid, sid_str, tdid));
+                    ToDoQueryTarget::ToDo(id) => {
+                        s.push_str(&id.to_string());
                         s.push_str(", ");
                     }
                 }
@@ -123,23 +120,23 @@ pub async fn query_todos(
     };
 
     let query: String = format!(
-        "SELECT * FROM todos WHERE lid IN ({}) OR (lid, sid) IN ({}) OR (lid, sid, tdid) IN ({});",
+        "SELECT * FROM todos WHERE list_id IN ({}) OR set_id IN ({}) OR id IN ({});",
         whole_list_ids, whole_set_ids, singular_ids
     );
 
     let query_result = sqlx::query(query.as_str()).fetch_all(&mut *db_conn).await?;
 
-    let mut todos = Vec::new();
+    let mut todos = HashSet::new();
     for row in query_result {
         let todo = ToDo {
-            id: row.get("tdid"),
-            list_id: row.get("lid"),
-            set_id: row.get("sid"),
+            id: row.get("id"),
+            list_id: row.get("list_id"),
+            set_id: row.get("set_id"),
             title: row.get("title"),
             complete: row.get("complete"),
             due_date: row.get("due_date"),
         };
-        todos.push(todo);
+        todos.insert(todo);
     }
 
     Ok(todos)
