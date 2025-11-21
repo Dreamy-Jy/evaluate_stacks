@@ -1,5 +1,7 @@
+use std::collections::BTreeSet;
+
 use actix_web::{
-    HttpResponse, Responder, patch,
+    patch,
     web::{Data, Json},
 };
 use chrono::{DateTime, Utc};
@@ -7,70 +9,67 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Sqlite};
 
 use crate::{
+    api::{
+        types::{JsonError, MaybeJson},
+        utils::query_some,
+    },
     db::sqlx::{
         update_lists as db_update_lists, update_sets as db_update_sets,
         update_todos as db_update_todos,
     },
-    types::{ListID, SetID, ToDoID},
+    types::{List, ListID, Set, SetID, SetQueryTarget, ToDo, ToDoQueryTarget},
 };
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateList {
     pub list_id: ListID,
-    pub title: Option<String>,
+    pub title: String,
 }
 type UpdateListsRequest = Vec<UpdateList>;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateSet {
-    pub set_id: SetID,
-    pub list_id: ListID,
+    pub target: SetQueryTarget,
+    pub list_id: Option<ListID>,
     pub title: Option<String>,
 }
 type UpdateSetsRequest = Vec<UpdateSet>;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateToDo {
-    pub to_do_id: ToDoID,
+    pub target: ToDoQueryTarget,
     pub set_id: Option<SetID>,
-    pub list_id: ListID,
+    pub list_id: Option<ListID>,
     pub title: Option<String>,
     pub complete: Option<bool>,
     pub due_date: Option<DateTime<Utc>>,
 }
 type UpdateToDosRequest = Vec<UpdateToDo>;
 
-// single SQL query, container level updates.
+type UpdateListsResponse = BTreeSet<List>;
+type UpdateSetsResponse = BTreeSet<Set>;
+type UpdateToDoResponse = BTreeSet<ToDo>;
 
 #[patch("/api/lists")]
 pub async fn update_lists(
-    req: Json<UpdateListsRequest>,
+    req: MaybeJson<UpdateListsRequest>,
     db_conn_pool: Data<Pool<Sqlite>>,
-) -> impl Responder {
-    db_update_lists(db_conn_pool, req.into_inner())
-        .await
-        .unwrap();
-    HttpResponse::Accepted().finish()
+) -> Result<Json<UpdateListsResponse>, JsonError> {
+    query_some(req, db_conn_pool, db_update_lists).await
 }
 
 #[patch("/api/sets")]
 pub async fn update_sets(
-    req: Json<UpdateSetsRequest>,
+    req: MaybeJson<UpdateSetsRequest>,
     db_conn_pool: Data<Pool<Sqlite>>,
-) -> impl Responder {
-    db_update_sets(db_conn_pool, req.into_inner())
-        .await
-        .unwrap();
-    HttpResponse::Accepted().finish()
+) -> Result<Json<UpdateSetsResponse>, JsonError> {
+    query_some(req, db_conn_pool, db_update_sets).await
 }
 
 #[patch("/api/to_dos")]
 pub async fn update_to_dos(
-    req: Json<UpdateToDosRequest>,
+    req: MaybeJson<UpdateToDosRequest>,
     db_conn_pool: Data<Pool<Sqlite>>,
-) -> impl Responder {
-    db_update_todos(db_conn_pool, req.into_inner())
-        .await
-        .unwrap();
-    HttpResponse::Accepted().finish()
+) -> Result<Json<UpdateToDoResponse>, JsonError> {
+    query_some(req, db_conn_pool, db_update_todos).await
 }
