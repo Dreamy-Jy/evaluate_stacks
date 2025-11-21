@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use actix_web::{
-    patch,
+    put,
     web::{Data, Json},
 };
 use chrono::{DateTime, Utc};
@@ -50,7 +50,7 @@ type UpdateListsResponse = BTreeSet<List>;
 type UpdateSetsResponse = BTreeSet<Set>;
 type UpdateToDoResponse = BTreeSet<ToDo>;
 
-#[patch("/api/lists")]
+#[put("/api/lists")]
 pub async fn update_lists(
     req: MaybeJson<UpdateListsRequest>,
     db_conn_pool: Data<Pool<Sqlite>>,
@@ -58,7 +58,7 @@ pub async fn update_lists(
     query_some(req, db_conn_pool, db_update_lists).await
 }
 
-#[patch("/api/sets")]
+#[put("/api/sets")]
 pub async fn update_sets(
     req: MaybeJson<UpdateSetsRequest>,
     db_conn_pool: Data<Pool<Sqlite>>,
@@ -66,7 +66,7 @@ pub async fn update_sets(
     query_some(req, db_conn_pool, db_update_sets).await
 }
 
-#[patch("/api/to_dos")]
+#[put("/api/to_dos")]
 pub async fn update_to_dos(
     req: MaybeJson<UpdateToDosRequest>,
     db_conn_pool: Data<Pool<Sqlite>>,
