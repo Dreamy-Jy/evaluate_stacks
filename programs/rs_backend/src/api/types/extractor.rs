@@ -12,6 +12,7 @@ use futures_util::{StreamExt, future::LocalBoxFuture};
 use serde::de::DeserializeOwned;
 use serde_json as json;
 
+#[derive(Debug)]
 pub enum MaybeJson<T> {
     Empty,
     Valid(T),
@@ -85,8 +86,19 @@ impl<T: DeserializeOwned> FromRequest for MaybeJson<T> {
                 return Ok(MaybeJson::Empty);
             }
 
+            let trimmed: Vec<u8> = req_body
+                .iter()
+                .copied()
+                .filter(|b| !b.is_ascii_whitespace())
+                .collect();
+
             match json::from_slice::<T>(&req_body) {
-                Ok(json) => Ok(MaybeJson::Valid(json)),
+                Ok(json) => {
+                    if trimmed == b"[]" {
+                        return Ok(MaybeJson::Empty);
+                    }
+                    Ok(MaybeJson::Valid(json))
+                }
                 Err(e) => Ok(MaybeJson::Invalid(JsonPayloadError::Deserialize(e))),
             }
         })
@@ -194,6 +206,34 @@ mod test {
         }
     }
 
+    async fn test_collection_handler(req: MaybeJson<Vec<ValidJson>>) -> HttpResponse {
+        match req {
+            MaybeJson::Empty => HttpResponse::NoContent().finish(),
+            MaybeJson::Valid(data) => HttpResponse::Ok().json(data),
+            MaybeJson::Invalid(e) => match e {
+                JsonPayloadError::OverflowKnownLength { length, limit } => {
+                    HttpResponse::PayloadTooLarge().body(format!(
+                        "Payload overflow: {} bytes exceeds limit of {} bytes",
+                        length, limit
+                    ))
+                }
+                JsonPayloadError::Overflow { limit } => HttpResponse::PayloadTooLarge()
+                    .body(format!("Payload overflow: limit is {} bytes", limit)),
+                JsonPayloadError::ContentType => {
+                    HttpResponse::UnsupportedMediaType().body("Content type error")
+                }
+                JsonPayloadError::Deserialize(err) => {
+                    HttpResponse::BadRequest().body(format!("JSON deserialize error: {}", err))
+                }
+                JsonPayloadError::Payload(err) => {
+                    HttpResponse::BadRequest().body(format!("Payload error: {}", err))
+                }
+                _ => HttpResponse::NotImplemented()
+                    .body(format!("You shouldn't see this error: {}", e)),
+            },
+        }
+    }
+
     // TEST MaybeJson START
 
     #[actix_web::test]
@@ -271,6 +311,20 @@ mod test {
         let resp2: actix_web::dev::ServiceResponse = test::call_service(&app, req2).await;
         assert!(resp2.status().is_success());
         assert_eq!(resp2.status().as_u16(), 204); // NoContent
+
+        let app2 =
+            test::init_service(App::new().route("/", web::to(test_collection_handler))).await;
+
+        let data: Vec<ValidJson> = Vec::new();
+
+        let req3 = test::TestRequest::post()
+            .uri("/")
+            .set_json(data)
+            .to_request();
+
+        let resp3: actix_web::dev::ServiceResponse = test::call_service(&app2, req3).await;
+        assert!(resp3.status().is_success());
+        assert_eq!(resp3.status().as_u16(), 204); // NoContent
     }
 
     // TEST MaybeJson END
