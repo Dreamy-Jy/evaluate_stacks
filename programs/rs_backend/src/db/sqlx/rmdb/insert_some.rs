@@ -7,14 +7,17 @@ use sqlx::{
 };
 
 use crate::{
-    api::{CreateList, CreateSet, CreateToDo},
+    api::{
+        CreateListsRequest, CreateListsResponse, CreateSetsRequest, CreateSetsResponse,
+        CreateToDosRequest, CreateToDosResponse,
+    },
     types::{List, Set, ToDo},
 };
 
 pub async fn insert_lists(
     db_conn_pool: Data<Pool<Sqlite>>,
-    entries: Vec<CreateList>,
-) -> Result<HashSet<List>, SQLXError> {
+    entries: CreateListsRequest,
+) -> Result<CreateListsResponse, SQLXError> {
     if entries.len() == 0 {
         return Err(InvalidArgument(
             "Caller Provided no entries to the database".to_string(),
@@ -47,8 +50,8 @@ pub async fn insert_lists(
 
 pub async fn insert_sets(
     db_conn_pool: Data<Pool<Sqlite>>,
-    entries: Vec<CreateSet>,
-) -> Result<HashSet<Set>, SQLXError> {
+    entries: CreateSetsRequest,
+) -> Result<CreateSetsResponse, SQLXError> {
     if entries.len() == 0 {
         return Err(InvalidArgument(
             "Caller Provided no entries to the database".to_string(),
@@ -85,8 +88,8 @@ pub async fn insert_sets(
 
 pub async fn insert_todos(
     db_conn_pool: Data<Pool<Sqlite>>,
-    entries: Vec<CreateToDo>,
-) -> Result<HashSet<ToDo>, SQLXError> {
+    entries: CreateToDosRequest,
+) -> Result<CreateToDosResponse, SQLXError> {
     if entries.len() == 0 {
         return Err(InvalidArgument(
             "Caller Provided no entries to the database".to_string(),

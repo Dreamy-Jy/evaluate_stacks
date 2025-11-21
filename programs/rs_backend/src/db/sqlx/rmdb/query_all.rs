@@ -3,11 +3,14 @@ use std::collections::BTreeSet;
 use actix_web::web::Data;
 use sqlx::{Error as SQLXError, Pool, Row, Sqlite};
 
-use crate::types::{List, Set, ToDo};
+use crate::{
+    api::{ReadListsResponse, ReadSetsResponse, ReadToDosResponse},
+    types::{List, Set, ToDo},
+};
 
 pub async fn query_all_lists(
     db_conn_pool: Data<Pool<Sqlite>>,
-) -> Result<BTreeSet<List>, SQLXError> {
+) -> Result<ReadListsResponse, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query_result = sqlx::query("SELECT * FROM lists")
@@ -26,7 +29,9 @@ pub async fn query_all_lists(
     Ok(lists)
 }
 
-pub async fn query_all_sets(db_conn_pool: Data<Pool<Sqlite>>) -> Result<BTreeSet<Set>, SQLXError> {
+pub async fn query_all_sets(
+    db_conn_pool: Data<Pool<Sqlite>>,
+) -> Result<ReadSetsResponse, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query_result = sqlx::query("SELECT * FROM sets")
@@ -48,7 +53,7 @@ pub async fn query_all_sets(db_conn_pool: Data<Pool<Sqlite>>) -> Result<BTreeSet
 
 pub async fn query_all_todos(
     db_conn_pool: Data<Pool<Sqlite>>,
-) -> Result<BTreeSet<ToDo>, SQLXError> {
+) -> Result<ReadToDosResponse, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query_result = sqlx::query("SELECT * FROM todos")

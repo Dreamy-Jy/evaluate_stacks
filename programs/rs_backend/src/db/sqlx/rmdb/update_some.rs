@@ -4,14 +4,17 @@ use actix_web::web::Data;
 use sqlx::{Error as SQLXError, Pool, Row, Sqlite};
 
 use crate::{
-    api::{UpdateList, UpdateSet, UpdateToDo},
+    api::{
+        UpdateListsRequest, UpdateListsResponse, UpdateSetsRequest, UpdateSetsResponse,
+        UpdateToDoResponse, UpdateToDosRequest,
+    },
     types::{List, Set, SetQueryTarget, ToDo, ToDoQueryTarget},
 };
 
 pub async fn update_lists(
     db_conn_pool: Data<Pool<Sqlite>>,
-    mods: Vec<UpdateList>,
-) -> Result<BTreeSet<List>, SQLXError> {
+    mods: UpdateListsRequest,
+) -> Result<UpdateListsResponse, SQLXError> {
     if mods.is_empty() {
         return Err(SQLXError::InvalidArgument(
             "Can't have zero modification when running update on Lists Table.".to_string(),
@@ -50,8 +53,8 @@ pub async fn update_lists(
 
 pub async fn update_sets(
     db_conn_pool: Data<Pool<Sqlite>>,
-    mods: Vec<UpdateSet>,
-) -> Result<BTreeSet<Set>, SQLXError> {
+    mods: UpdateSetsRequest,
+) -> Result<UpdateSetsResponse, SQLXError> {
     if mods.is_empty() {
         return Err(SQLXError::InvalidArgument(
             "Can't have zero modification when running update on Sets Table.".to_string(),
@@ -104,8 +107,8 @@ pub async fn update_sets(
 
 pub async fn update_todos(
     db_conn_pool: Data<Pool<Sqlite>>,
-    mods: Vec<UpdateToDo>,
-) -> Result<BTreeSet<ToDo>, SQLXError> {
+    mods: UpdateToDosRequest,
+) -> Result<UpdateToDoResponse, SQLXError> {
     if mods.is_empty() {
         return Err(SQLXError::InvalidArgument(
             "Can't have zero modification when running update on Todos Table.".to_string(),

@@ -6,12 +6,18 @@ use sqlx::{
     Pool, Row, Sqlite,
 };
 
-use crate::types::{ListID, SetID, SetQueryTarget, ToDoID, ToDoQueryTarget};
+use crate::{
+    api::{
+        DeleteListsRequest, DeleteListsResponse, DeleteSetsRequest, DeleteSetsResponse,
+        DeleteToDosRequest, DeleteToDosResponse,
+    },
+    types::{SetQueryTarget, ToDoQueryTarget},
+};
 
 pub async fn delete_lists(
     db_conn_pool: Data<Pool<Sqlite>>,
-    adds: HashSet<ListID>,
-) -> Result<HashSet<ListID>, SQLXError> {
+    adds: DeleteListsRequest,
+) -> Result<DeleteListsResponse, SQLXError> {
     if adds.len() == 0 {
         return Err(InvalidArgument(
             "Caller Provided no entries to the database".to_string(),
@@ -40,8 +46,8 @@ pub async fn delete_lists(
 
 pub async fn delete_sets(
     db_conn_pool: Data<Pool<Sqlite>>,
-    adds: HashSet<SetQueryTarget>,
-) -> Result<HashSet<SetID>, SQLXError> {
+    adds: DeleteSetsRequest,
+) -> Result<DeleteSetsResponse, SQLXError> {
     if adds.len() == 0 {
         return Err(InvalidArgument(
             "Caller Provided no entries to the database".to_string(),
@@ -91,8 +97,8 @@ pub async fn delete_sets(
 
 pub async fn delete_todos(
     db_conn_pool: Data<Pool<Sqlite>>,
-    adds: HashSet<ToDoQueryTarget>,
-) -> Result<HashSet<ToDoID>, SQLXError> {
+    adds: DeleteToDosRequest,
+) -> Result<DeleteToDosResponse, SQLXError> {
     if adds.len() == 0 {
         return Err(InvalidArgument(
             "Caller Provided no entries to the database".to_string(),

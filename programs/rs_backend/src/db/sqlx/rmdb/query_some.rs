@@ -1,14 +1,20 @@
-use std::collections::{BTreeSet, HashSet};
+use std::collections::BTreeSet;
 
 use actix_web::web::Data;
 use sqlx::{Error as SQLXError, Pool, Row, Sqlite};
 
-use crate::types::{List, ListID, Set, SetQueryTarget, ToDo, ToDoQueryTarget};
+use crate::{
+    api::{
+        ReadListsRequest, ReadListsResponse, ReadSetsRequest, ReadSetsResponse, ReadToDosRequest,
+        ReadToDosResponse,
+    },
+    types::{List, Set, SetQueryTarget, ToDo, ToDoQueryTarget},
+};
 
 pub async fn query_lists(
     db_conn_pool: Data<Pool<Sqlite>>,
-    adds: HashSet<ListID>,
-) -> Result<BTreeSet<List>, SQLXError> {
+    adds: ReadListsRequest,
+) -> Result<ReadListsResponse, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let query = format!(
@@ -35,8 +41,8 @@ pub async fn query_lists(
 
 pub async fn query_sets(
     db_conn_pool: Data<Pool<Sqlite>>,
-    adds: HashSet<SetQueryTarget>,
-) -> Result<BTreeSet<Set>, SQLXError> {
+    adds: ReadSetsRequest,
+) -> Result<ReadSetsResponse, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let (whole_list_ids, singular_ids) = {
@@ -85,8 +91,8 @@ pub async fn query_sets(
 
 pub async fn query_todos(
     db_conn_pool: Data<Pool<Sqlite>>,
-    adds: HashSet<ToDoQueryTarget>,
-) -> Result<BTreeSet<ToDo>, SQLXError> {
+    adds: ReadToDosRequest,
+) -> Result<ReadToDosResponse, SQLXError> {
     let mut db_conn = db_conn_pool.acquire().await?;
 
     let (whole_list_ids, whole_set_ids, singular_ids) = {

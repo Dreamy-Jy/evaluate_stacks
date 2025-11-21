@@ -19,13 +19,13 @@ use crate::{
     types::{List, Set, ToDo},
 };
 
-type UpdateListsRequest = Vec<UpdateList>;
-type UpdateSetsRequest = Vec<UpdateSet>;
-type UpdateToDosRequest = Vec<UpdateToDo>;
+pub type UpdateListsRequest = Vec<UpdateList>;
+pub type UpdateSetsRequest = Vec<UpdateSet>;
+pub type UpdateToDosRequest = Vec<UpdateToDo>;
 
-type UpdateListsResponse = BTreeSet<List>;
-type UpdateSetsResponse = BTreeSet<Set>;
-type UpdateToDoResponse = BTreeSet<ToDo>;
+pub type UpdateListsResponse = BTreeSet<List>;
+pub type UpdateSetsResponse = BTreeSet<Set>;
+pub type UpdateToDoResponse = BTreeSet<ToDo>;
 
 #[put("/api/lists")]
 pub async fn update_lists(

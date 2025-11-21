@@ -15,13 +15,13 @@ use crate::{
     types::{List, Set, ToDo},
 };
 
-type CreateListsRequest = Vec<CreateList>;
-type CreateSetsRequest = Vec<CreateSet>;
-type CreateToDosRequest = Vec<CreateToDo>;
+pub type CreateListsRequest = Vec<CreateList>;
+pub type CreateSetsRequest = Vec<CreateSet>;
+pub type CreateToDosRequest = Vec<CreateToDo>;
 
-type CreateListsResponse = HashSet<List>;
-type CreateSetsResponse = HashSet<Set>;
-type CreateToDosResponse = HashSet<ToDo>;
+pub type CreateListsResponse = HashSet<List>;
+pub type CreateSetsResponse = HashSet<Set>;
+pub type CreateToDosResponse = HashSet<ToDo>;
 
 #[post("/api/lists")]
 pub async fn create_lists(

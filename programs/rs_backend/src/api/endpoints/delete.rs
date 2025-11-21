@@ -18,13 +18,13 @@ use crate::{
     types::{ListID, SetID, SetQueryTarget, ToDoID, ToDoQueryTarget},
 };
 
-type DeleteListsRequest = HashSet<ListID>;
-type DeleteSetsRequest = HashSet<SetQueryTarget>;
-type DeleteToDosRequest = HashSet<ToDoQueryTarget>;
+pub type DeleteListsRequest = HashSet<ListID>;
+pub type DeleteSetsRequest = HashSet<SetQueryTarget>;
+pub type DeleteToDosRequest = HashSet<ToDoQueryTarget>;
 
-type DeleteListsResponse = HashSet<ListID>;
-type DeleteSetsResponse = HashSet<SetID>;
-type DeleteToDosResponse = HashSet<ToDoID>;
+pub type DeleteListsResponse = HashSet<ListID>;
+pub type DeleteSetsResponse = HashSet<SetID>;
+pub type DeleteToDosResponse = HashSet<ToDoID>;
 
 #[delete("/api/lists")]
 pub async fn delete_lists(
