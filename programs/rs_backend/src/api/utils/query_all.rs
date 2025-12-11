@@ -1,11 +1,10 @@
-use actix_web::{
-    error::JsonPayloadError,
-    web::{Data, Json},
-};
+use actix_web::web::{Data, Json};
 use len_trait::Len;
 use sqlx::{Error as SQLXError, Pool, Sqlite};
 
 use crate::api::types::{JsonError, MaybeJson};
+
+use super::query_shared::{map_input_err, map_query_err};
 
 pub async fn query_all_or_some<In, Out, Qall, Qsome, Fall, Fsome>(
     req: MaybeJson<In>,
@@ -23,65 +22,13 @@ where
     match req {
         MaybeJson::Empty => match query_all(db).await {
             Ok(result) => Ok(Json(result)),
-            Err(err) => match err {
-                SQLXError::InvalidArgument(msg) => Err(JsonError::BadRequest(format!(
-                    "Invalid Argument Provided: {}",
-                    msg
-                ))),
-                _ => Err(JsonError::ServerError(format!(
-                    "Database Insertion Error: {}",
-                    err
-                ))),
-            },
+            Err(err) => Err(map_query_err(err)),
         },
         MaybeJson::Valid(json) => match query_some(db, json).await {
             Ok(result) => Ok(Json(result)),
-            Err(err) => match err {
-                SQLXError::InvalidArgument(msg) => Err(JsonError::BadRequest(format!(
-                    "Invalid Argument Provided: {}",
-                    msg
-                ))),
-                _ => Err(JsonError::ServerError(format!(
-                    "Database Insertion Error: {}",
-                    err
-                ))),
-            },
+            Err(err) => Err(map_query_err(err)),
         },
-        MaybeJson::Invalid(err) => match err {
-            JsonPayloadError::Overflow { limit } => {
-                return Err(JsonError::PayloadTooLarge(format!(
-                    "You're payload is greater than the limit for {} bytes",
-                    limit
-                )));
-            }
-            JsonPayloadError::OverflowKnownLength { length, limit } => {
-                return Err(JsonError::PayloadTooLarge(format!(
-                    "You're payload length of {} bytes is greater than the limit for {} bytes",
-                    length, limit
-                )));
-            }
-            JsonPayloadError::ContentType => {
-                return Err(JsonError::UnsupportedMediaType(
-                    "Unsupported 'Content-Type' header or missing 'Content-Type' header"
-                        .to_string(),
-                ));
-            }
-            JsonPayloadError::Payload(e) => {
-                return Err(JsonError::BadRequest(format!(
-                    "Error processing your payload: {}",
-                    e
-                )));
-            }
-            JsonPayloadError::Deserialize(e) => {
-                return Err(JsonError::BadRequest(format!(
-                    "Error deserializing your payload: {}",
-                    e
-                )));
-            }
-            _ => {
-                return Err(JsonError::Unknown("Unknown Issue".to_string()));
-            }
-        },
+        MaybeJson::Invalid(err) => Err(map_input_err(err)),
     }
 }
 
