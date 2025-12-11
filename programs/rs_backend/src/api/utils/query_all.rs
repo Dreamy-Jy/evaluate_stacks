@@ -22,13 +22,13 @@ where
     match req {
         MaybeJson::Empty => match query_all(db).await {
             Ok(result) => Ok(Json(result)),
-            Err(err) => Err(map_query_err(err)),
+            Err(err) => map_query_err(err),
         },
         MaybeJson::Valid(json) => match query_some(db, json).await {
             Ok(result) => Ok(Json(result)),
-            Err(err) => Err(map_query_err(err)),
+            Err(err) => map_query_err(err),
         },
-        MaybeJson::Invalid(err) => Err(map_input_err(err)),
+        MaybeJson::Invalid(err) => map_input_err(err),
     }
 }
 
