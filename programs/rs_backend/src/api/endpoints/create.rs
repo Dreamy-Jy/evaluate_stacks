@@ -8,11 +8,11 @@ use sqlx::{Pool, Sqlite};
 
 use crate::{
     api::{
-        types::{CreateList, CreateSet, CreateToDo, JsonError, MaybeJson},
+        types::{JsonError, MaybeJson},
         utils::query_some,
     },
     db::sqlx::{insert_lists, insert_sets, insert_todos},
-    types::{List, Set, ToDo},
+    types::{CreateList, CreateSet, CreateToDo, List, Set, ToDo},
 };
 
 pub type CreateListsRequest = Vec<CreateList>;

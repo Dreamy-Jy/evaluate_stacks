@@ -8,7 +8,6 @@ use sqlx::{Pool, Sqlite};
 
 use crate::{
     api::{
-        UpdateList, UpdateSet, UpdateToDo,
         types::{JsonError, MaybeJson},
         utils::query_some,
     },
@@ -16,7 +15,7 @@ use crate::{
         update_lists as db_update_lists, update_sets as db_update_sets,
         update_todos as db_update_todos,
     },
-    types::{List, Set, ToDo},
+    types::{List, Set, ToDo, UpdateList, UpdateSet, UpdateToDo},
 };
 
 pub type UpdateListsRequest = Vec<UpdateList>;
